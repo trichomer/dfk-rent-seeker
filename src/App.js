@@ -4,8 +4,8 @@ import Onboard from '@web3-onboard/core';
 import injectedModule from '@web3-onboard/injected-wallets';
 import assistingAuctionAbi from './abis/AssistingAuction.json';
 import heroCoreDiamondAbi from './abis/HeroCoreDiamond.json';
-import { Button, Input, Typography, Card, CardContent, CardActions } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
+import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid } from '@mui/material';
+import crystal from "./assets/images/crystal.png";
 
 const DFK_RPC_URL = 'https://subnets.avax.network/defi-kingdoms/dfk-chain/rpc';
 const RENTAL_CONTRACT_ADDRESS = '0x8101CfFBec8E045c3FAdC3877a1D30f97d301209';
@@ -49,25 +49,33 @@ function RentCell({ hero, createAuction, cancelAuction }) {
     const startingPrice = hero.startingPrice
       ? hero.startingPrice.toString()
       : 'unknown';
-    return (
-      <div>
-        <Typography>Renting: {startingPrice} C</Typography>
-        <Button variant="contained" onClick={() => cancelAuction(hero.id)}>
-          Cancel
-        </Button>
-      </div>
-    );
+      return (
+        <>
+          <Box display="flex" alignItems="center">
+            <Typography>{startingPrice}</Typography>
+            <img
+              src={crystal}
+              alt="CRYSTAL"
+              image={crystal}
+              style={{ 
+                height: "20px",
+                width: "auto" 
+              }}
+            />
+          </Box>
+          <Button variant="outlined" onClick={() => cancelAuction(hero.id)}>
+            Cancel
+          </Button>
+        </>
+      );
   } else {
     return (
-      <div>
+      <>
         <Input
           type="number"
           value={inputPrice}
           onChange={(e) => setInputPrice(e.target.value)}
-          placeholder="Price in C"
-          sx={{
-            width: '80px',
-          }}
+          placeholder="Price (c)"
         />
         <Button
           variant="contained"
@@ -75,7 +83,7 @@ function RentCell({ hero, createAuction, cancelAuction }) {
         >
           Rent
         </Button>
-      </div>
+      </>
     );
   }
 }
@@ -197,17 +205,6 @@ function App() {
     fetchHeroes();
   }, [provider]);
 
-  const renderRentStatus = (params) => {
-    const hero = params.row;
-    return (
-      <RentCell
-        hero={hero}
-        createAuction={createAuction}
-        cancelAuction={cancelAuction}
-      />
-    );
-  };
-
   const cancelAuction = async (tokenId) => {
     if (!provider) return;
     const rentalContract = new ethers.Contract(
@@ -256,49 +253,20 @@ function App() {
 
   const filteredHeroes = heroes.filter((hero) => hero[1].summons !== 0);
 
-  const columns = [
-    { field: 'id', headerName: 'ID', width: 130 },
-    { field: 'class', headerName: 'Main', width: 100 },
-    { field: 'sub', headerName: 'Sub', width: 100 },
-    { field: 'generation', headerName: 'Gen', width: 30 },
-    { field: 'rarity', headerName: 'Rarity', width: 50 },
-    { field: 'summons', headerName: 'S', width: 20 },
-    { field: 'maxSummons', headerName: 'Max', width: 20 },
-    {
-      field: 'rent',
-      headerName: 'Rent',
-      width: 250,
-      renderCell: renderRentStatus,
-    },
-    {
-      field: 'nextSummonTime',
-      headerName: 'Next',
-      width: 200,
-      valueGetter: (params) => formatTimestamp(params.value),
-    },
-  ];
-
-  const sortModel = [
-    {
-      field: 'nextSummonTime',
-      sort: 'asc',
-    },
-  ];
-
   return (
     <div>
       <Typography variant="h5">DFK Rent Seeker</Typography>
       <Button variant="contained" onClick={connectWallet}>
-        Connect Wallet
+        Connect
       </Button>
       {isLoading ? (
         <p>Loading...</p>
       ) : (
         isHeroesFetched &&
         filteredHeroes.length > 0 && (
-          <div style={{ height: 800, width: '100%' }}>
-            <DataGrid
-              rows={filteredHeroes.map((hero, index) => ({
+          <Grid container spacing={1}>
+            {filteredHeroes.map((hero, index) => {
+              const heroInfo = {
                 id: hero[0].toString(),
                 class: classMap[hero[2].class],
                 sub: classMap[hero[2].subClass],
@@ -308,13 +276,31 @@ function App() {
                 maxSummons: hero[1].maxSummons,
                 isRenting: hero.isRenting,
                 startingPrice: hero.startingPrice,
-                nextSummonTime: hero[1].nextSummonTime,
-              }))}
-              columns={columns}
-              pageSize={5}
-              sortModel={sortModel}
-            />
-          </div>
+                nextSummonTime: formatTimestamp(hero[1].nextSummonTime),
+              };
+              return (
+                <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={index}>
+                  <Card elevation={2}>
+                    <CardContent sx={{ padding: 1 }}>
+                      <Typography>{heroInfo.id}</Typography>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.summons}/{heroInfo.maxSummons}</Typography>
+                        </div>
+                      <CardActions disableSpacing sx={{ paddingTop: 1, paddingBottom: 0 }}>
+                        <RentCell
+                          hero={heroInfo}
+                          createAuction={createAuction}
+                          cancelAuction={cancelAuction}
+                        />
+                        <Typography sx={{ fontSize: '0.7rem' }}>Next: {heroInfo.nextSummonTime}</Typography>
+                      </CardActions>
+                      
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
         )
       )}
     </div>
