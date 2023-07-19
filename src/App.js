@@ -252,7 +252,10 @@ function App() {
     return date.toLocaleString();
   };
 
-  const filteredHeroes = heroes.filter((hero) => hero[1].summons !== 0);
+  const filteredHeroes = heroes.filter((hero) => {
+    const summonsRemaining = hero[1].maxSummons - hero[1].summons;
+    return summonsRemaining !== 0;
+  });
 
   return (
     <div>
@@ -277,6 +280,7 @@ function App() {
                 rarity: rarityMap[hero[2].rarity],
                 summons: hero[1].summons,
                 maxSummons: hero[1].maxSummons,
+                remainingSummons: hero[1].maxSummons - hero[1].summons,
                 isRenting: hero.isRenting,
                 startingPrice: hero.startingPrice,
                 nextSummonTime: formatTimestamp(hero[1].nextSummonTime),
@@ -287,7 +291,7 @@ function App() {
                     <CardContent sx={{ padding: 1 }}>
                       <Typography>{heroInfo.id}</Typography>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.summons}/{heroInfo.maxSummons}</Typography>
+                        <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.remainingSummons}/{heroInfo.maxSummons}</Typography>
                         </div>
                       <CardActions disableSpacing sx={{ paddingTop: 1, paddingBottom: 0 }}>
                         <RentCell
