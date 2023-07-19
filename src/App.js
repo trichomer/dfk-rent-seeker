@@ -6,6 +6,7 @@ import assistingAuctionAbi from './abis/AssistingAuction.json';
 import heroCoreDiamondAbi from './abis/HeroCoreDiamond.json';
 import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid } from '@mui/material';
 import crystal from "./assets/images/crystal.png";
+import GitHubIcon from '@mui/icons-material/GitHub';
 
 const DFK_RPC_URL = 'https://subnets.avax.network/defi-kingdoms/dfk-chain/rpc';
 const RENTAL_CONTRACT_ADDRESS = '0x8101CfFBec8E045c3FAdC3877a1D30f97d301209';
@@ -255,7 +256,9 @@ function App() {
 
   return (
     <div>
-      <Typography variant="h5">DFK Rent Seeker</Typography>
+      <Typography variant="h5">
+        DFK Rent Seeker <a href="https://github.com/trichomer/dfk-rent-seeker" target="_blank" rel="noopener noreferrer"><GitHubIcon /></a>
+      </Typography>
       <Button variant="contained" onClick={connectWallet}>
         Connect
       </Button>
@@ -300,7 +303,9 @@ function App() {
                 </Grid>
               );
             })}
+            
           </Grid>
+          
         )
       )}
     </div>
