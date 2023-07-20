@@ -4,13 +4,32 @@ import Onboard from '@web3-onboard/core';
 import injectedModule from '@web3-onboard/injected-wallets';
 import assistingAuctionAbi from './abis/AssistingAuction.json';
 import heroCoreDiamondAbi from './abis/HeroCoreDiamond.json';
-import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid } from '@mui/material';
+import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid, Select, MenuItem } from '@mui/material';
 import crystal from "./assets/images/crystal.png";
 import GitHubIcon from '@mui/icons-material/GitHub';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 const DFK_RPC_URL = 'https://subnets.avax.network/defi-kingdoms/dfk-chain/rpc';
 const RENTAL_CONTRACT_ADDRESS = '0x8101CfFBec8E045c3FAdC3877a1D30f97d301209';
 const HEROES_CONTRACT_ADDRESS = '0xEb9B61B145D6489Be575D3603F4a704810e143dF';
+const theme = createTheme({
+  palette: {
+    type: 'dark',
+    primary: {
+      main: '#808080',
+    },
+    secondary: {
+      main: '#505050',
+    },
+    background: {
+      default: '#303030',
+    },
+    text: {
+      primary: '#808080',
+      secondary: '#505050',
+    },
+  },
+});
 const classMap = {
   0: 'Warrior',
   1: 'Knight',
@@ -94,6 +113,8 @@ function App() {
   const [heroes, setHeroes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isHeroesFetched, setIsHeroesFetched] = useState(false);
+  const [chainChanged, setChainChanged] = useState(false);
+  const [classFilter, setClassFilter] = useState('All');
 
   const injected = injectedModule();
 
@@ -109,6 +130,10 @@ function App() {
             rpcUrl: DFK_RPC_URL,
           },
         ],
+        connect: {
+          autoConnectLastWallet: true
+        },
+        theme: 'dark',
       }),
     []
   );
@@ -120,7 +145,21 @@ function App() {
         wallets[0].provider,
         'any'
       );
+
       setProvider(ethersProvider);
+
+      const network = await ethersProvider.getNetwork();
+      console.log(network);
+
+      if (network.chainId !== 53935) {
+        const success = await onboard.setChain({ chainId: '53935' });
+        if (!success) {
+          console.error('Failed to set chain to DFK Chain');
+        } else {
+          const newProvider = new ethers.providers.Web3Provider(wallets[0].provider, 'any');
+          setProvider(newProvider);
+        }
+      }
     }
   };
 
@@ -183,6 +222,13 @@ function App() {
       if (!provider) {
         return;
       }
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== 53935) {
+        console.log('Wallet not on DFK Chain');
+        return;
+      }
+
       setIsLoading(true);
       if (provider) {
         const heroesContract = new ethers.Contract(
@@ -204,7 +250,8 @@ function App() {
     };
 
     fetchHeroes();
-  }, [provider]);
+    setChainChanged(false);
+  }, [provider, chainChanged]);
 
   const cancelAuction = async (tokenId) => {
     if (!provider) return;
@@ -257,62 +304,84 @@ function App() {
     return summonsRemaining !== 0;
   });
 
+  const displayedHeroes = classFilter === 'All' 
+  ? filteredHeroes 
+  : filteredHeroes.filter(hero => classMap[hero[2].class] === classFilter);
+
+
   return (
-    <div>
-      <Typography variant="h5">
-        DFK Rent Seeker <a href="https://github.com/trichomer/dfk-rent-seeker" target="_blank" rel="noopener noreferrer"><GitHubIcon /></a>
-      </Typography>
-      <Button variant="contained" onClick={connectWallet}>
-        Connect
-      </Button>
-      {isLoading ? (
-        <p>Loading...</p>
-      ) : (
-        isHeroesFetched &&
-        filteredHeroes.length > 0 && (
-          <Grid container spacing={1}>
-            {filteredHeroes.map((hero, index) => {
-              const heroInfo = {
-                id: hero[0].toString(),
-                class: classMap[hero[2].class],
-                sub: classMap[hero[2].subClass],
-                generation: hero[2].generation,
-                rarity: rarityMap[hero[2].rarity],
-                summons: hero[1].summons,
-                maxSummons: hero[1].maxSummons,
-                remainingSummons: hero[1].maxSummons - hero[1].summons,
-                isRenting: hero.isRenting,
-                startingPrice: hero.startingPrice,
-                nextSummonTime: formatTimestamp(hero[1].nextSummonTime),
-              };
-              return (
-                <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={index}>
-                  <Card elevation={2}>
-                    <CardContent sx={{ padding: 1 }}>
-                      <Typography>{heroInfo.id}</Typography>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.remainingSummons}/{heroInfo.maxSummons}</Typography>
-                        </div>
-                      <CardActions disableSpacing sx={{ paddingTop: 1, paddingBottom: 0 }}>
-                        <RentCell
-                          hero={heroInfo}
-                          createAuction={createAuction}
-                          cancelAuction={cancelAuction}
-                        />
-                        <Typography sx={{ fontSize: '0.7rem' }}>Next: {heroInfo.nextSummonTime}</Typography>
-                      </CardActions>
-                      
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
+    <ThemeProvider theme={theme}>
+      <Box sx={{ bgcolor: 'background.default' }}>
+        <Typography variant="h5" sx={{ color: 'text.primary' }}>
+          DFK Rent Seeker <a href="https://github.com/trichomer/dfk-rent-seeker" target="_blank" rel="noopener noreferrer"><GitHubIcon /></a>
+        </Typography>
+        <Button variant="contained" onClick={connectWallet}>
+          Connect
+        </Button>
+        <Select 
+          value={classFilter} 
+          onChange={event => setClassFilter(event.target.value)}
+          sx={{
+            backgroundColor: 'darkgray',
+            color: '',
+          }}  
+        >
+          <MenuItem value="All">Any Class</MenuItem>
+          {Object.values(classMap).map((className, index) => (
+            <MenuItem value={className} key={index}>
+              {className}
+            </MenuItem>
+          ))}
+        </Select>
+        {isLoading ? (
+          <Typography variant="h4" sx={{ color: 'text.primary' }}>Loading...</Typography>
+        ) : (
+          isHeroesFetched &&
+          filteredHeroes.length > 0 && (
+            <Grid container spacing={1} sx={{ bgcolor: 'background.default' }}>
+              {displayedHeroes.map((hero, index) => {
+                const heroInfo = {
+                  id: hero[0].toString(),
+                  class: classMap[hero[2].class],
+                  sub: classMap[hero[2].subClass],
+                  generation: hero[2].generation,
+                  rarity: rarityMap[hero[2].rarity],
+                  summons: hero[1].summons,
+                  maxSummons: hero[1].maxSummons,
+                  remainingSummons: hero[1].maxSummons - hero[1].summons,
+                  isRenting: hero.isRenting,
+                  startingPrice: hero.startingPrice,
+                  nextSummonTime: formatTimestamp(hero[1].nextSummonTime),
+                };
+                return (
+                  <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={index}>
+                    <Card elevation={2} sx={{ bgcolor: 'background.default' }}>
+                      <CardContent sx={{ padding: 1 }}>
+                        <Typography>{heroInfo.id}</Typography>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.remainingSummons}/{heroInfo.maxSummons}</Typography>
+                          </div>
+                        <CardActions disableSpacing sx={{ paddingTop: 1, paddingBottom: 0 }}>
+                          <RentCell
+                            hero={heroInfo}
+                            createAuction={createAuction}
+                            cancelAuction={cancelAuction}
+                          />
+                          <Typography sx={{ fontSize: '0.7rem' }}>Next: {heroInfo.nextSummonTime}</Typography>
+                        </CardActions>
+                        
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+              
+            </Grid>
             
-          </Grid>
-          
-        )
-      )}
-    </div>
+          )
+        )}
+      </Box>
+    </ThemeProvider>
   );
 }
 
