@@ -24,10 +24,27 @@ const theme = createTheme({
     },
     background: {
       default: '#303030',
+      borderGradient: 'linear-gradient(45deg, #000, darkgray, gray)',
     },
     text: {
       primary: '#808080',
       secondary: '#505050',
+    },
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: '15px',
+          border: '3px solid',
+          borderImageSource: 'linear-gradient(45deg, #000, darkgray, gray)',
+          borderImageSlice: 1,
+          borderTopWidth: '0px',
+          borderLeftWidth: '0px',
+          borderRightWidth: '1px',
+          borderBottomWidth: '2px',
+        },
+      },
     },
   },
 });
