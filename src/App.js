@@ -4,11 +4,12 @@ import Onboard from '@web3-onboard/core';
 import injectedModule from '@web3-onboard/injected-wallets';
 import assistingAuctionAbi from './abis/AssistingAuction.json';
 import heroCoreDiamondAbi from './abis/HeroCoreDiamond.json';
-import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid, Select, MenuItem } from '@mui/material';
+import { Box, Button, Input, Typography, Card, CardContent, CardActions, Grid, Divider, ButtonGroup } from '@mui/material';
 import crystal from "./assets/images/crystal.png";
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
+const { decodeRecessiveGeneAndNormalize } = require("./constants/recessive-genes.js");
 const DFK_RPC_URL = 'https://subnets.avax.network/defi-kingdoms/dfk-chain/rpc';
 const RENTAL_CONTRACT_ADDRESS = '0x8101CfFBec8E045c3FAdC3877a1D30f97d301209';
 const HEROES_CONTRACT_ADDRESS = '0xEb9B61B145D6489Be575D3603F4a704810e143dF';
@@ -61,6 +62,25 @@ const rarityMap = {
   1: '🟩',
   0: '⬜',
 };
+const advancedPlusActive = [
+  "A1: Exhaust🔆",
+  "A2: Daze🔆",
+  "A3: Explosion🔆",
+  "A4: Hardened Shield🔆",
+  "E1: Stun❄️❄️",
+  "E2: Second Wind❄️❄️",
+  "Ex1: Resurrection🚨🚨🚨"
+];
+const advancedPlusPassive = [
+  "A1: Leadership🔆",
+  "A2: Efficient🔆",
+  "A3: Intimidation🔆",
+  "A4: Toxic🔆",
+  "E1: Giant Slayer❄️❄️",
+  "E2: Last Stand❄️❄️",
+  "Ex1: Second Life🚨🚨🚨"
+];
+
 
 function RentCell({ hero, createAuction, cancelAuction }) {
   const [inputPrice, setInputPrice] = useState('');
@@ -96,6 +116,7 @@ function RentCell({ hero, createAuction, cancelAuction }) {
           value={inputPrice}
           onChange={(e) => setInputPrice(e.target.value)}
           placeholder="Price (c)"
+          sx={{ width: '100px' }}
         />
         <Button
           variant="contained"
@@ -114,7 +135,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isHeroesFetched, setIsHeroesFetched] = useState(false);
   const [chainChanged, setChainChanged] = useState(false);
-  const [classFilter, setClassFilter] = useState('All');
+  const [advancedFilter, setAdvancedFilter] = useState(false);
+  const [eliteFilter, setEliteFilter] = useState(false);
 
   const injected = injectedModule();
 
@@ -304,35 +326,43 @@ function App() {
     return summonsRemaining !== 0;
   });
 
-  const displayedHeroes = classFilter === 'All' 
-  ? filteredHeroes 
-  : filteredHeroes.filter(hero => classMap[hero[2].class] === classFilter);
+  let displayedHeroes = filteredHeroes;
+  if (advancedFilter) {
+    displayedHeroes = displayedHeroes.filter(hero => hero[2].class > 16 && hero[2].class < 24);
+  }
+  if (eliteFilter) {
+    displayedHeroes = displayedHeroes.filter(hero => hero[2].class > 23);
+  }
 
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ bgcolor: 'background.default' }}>
         <Typography variant="h5" sx={{ color: 'text.primary' }}>
-          DFK Rent Seeker <a href="https://github.com/trichomer/dfk-rent-seeker" target="_blank" rel="noopener noreferrer"><GitHubIcon /></a>
+          DFK Rent Seeker <a href="https://github.com/trichomer/dfk-rent-seeker" target="_blank" rel="noopener noreferrer"><GitHubIcon sx={{ color: 'white' }} /></a>
         </Typography>
-        <Button variant="contained" onClick={connectWallet}>
-          Connect
-        </Button>
-        <Select 
-          value={classFilter} 
-          onChange={event => setClassFilter(event.target.value)}
-          sx={{
-            backgroundColor: 'darkgray',
-            color: '',
-          }}  
-        >
-          <MenuItem value="All">Any Class</MenuItem>
-          {Object.values(classMap).map((className, index) => (
-            <MenuItem value={className} key={index}>
-              {className}
-            </MenuItem>
-          ))}
-        </Select>
+        <Box display="flex" flexDirection="column">
+          <Button variant="contained" onClick={connectWallet} sx={{ width: 'fit-content' }}>
+            Connect
+          </Button>
+          <Divider sx={{ height: 2, bgcolor: 'secondary.main' }} />
+          <ButtonGroup
+            sx={{ '--ButtonGroup-radius': '20px' }}
+          >
+            <Button 
+              variant={advancedFilter ? "contained" : "outlined"} 
+              onClick={() => {setAdvancedFilter(!advancedFilter); setEliteFilter(false);}}
+            >
+              Advanced
+            </Button>
+            <Button 
+              variant={eliteFilter ? "contained" : "outlined"}
+              onClick={() => {setEliteFilter(!eliteFilter); setAdvancedFilter(false);}}
+            >
+              Elite
+            </Button>
+          </ButtonGroup>
+        </Box>
         {isLoading ? (
           <Typography variant="h4" sx={{ color: 'text.primary' }}>Loading...</Typography>
         ) : (
@@ -340,6 +370,15 @@ function App() {
           filteredHeroes.length > 0 && (
             <Grid container spacing={1} sx={{ bgcolor: 'background.default' }}>
               {displayedHeroes.map((hero, index) => {
+                let decodedGenes = decodeRecessiveGeneAndNormalize(hero[2][0]);
+                //console.log(decodedGenes);
+                let [mainD, mainR1, mainR2, mainR3] = decodedGenes.mainClassGenes;
+                let [subD, subR1, subR2, subR3] = decodedGenes.subClassGenes;
+                let [a1D, a1R1, a1R2, a1R3] = decodedGenes.a1Genes;
+                let [a2D, a2R1, a2R2, a2R3] = decodedGenes.a2Genes;
+                let [p1D, p1R1, p1R2, p1R3] = decodedGenes.p1Genes;
+                let [p2D, p2R1, p2R2, p2R3] = decodedGenes.p2Genes;
+                //console.log(a1D);
                 const heroInfo = {
                   id: hero[0].toString(),
                   class: classMap[hero[2].class],
@@ -352,24 +391,38 @@ function App() {
                   isRenting: hero.isRenting,
                   startingPrice: hero.startingPrice,
                   nextSummonTime: formatTimestamp(hero[1].nextSummonTime),
+                  r1: mainR1,
+                  subr1: subR1,
+                  a1d: a1D,
+                  a2d: a2D,
+                  p1d: p1D,
+                  p2d: p2D,
+                  a1r1: a1R1,
+                  a2r1: a2R1,
+                  p1r1: p1R1,
+                  p2r1: p2R1,
                 };
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={index}>
                     <Card elevation={2} sx={{ bgcolor: 'background.default' }}>
-                      <CardContent sx={{ padding: 1 }}>
+                      <CardContent >
                         <Typography>{heroInfo.id}</Typography>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <Typography>M: {heroInfo.class} S: {heroInfo.sub} Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.remainingSummons}/{heroInfo.maxSummons}</Typography>
-                          </div>
+                          <Typography>M: {heroInfo.class} ({heroInfo.r1}) </Typography>
+                          <Typography>S: {heroInfo.sub} ({heroInfo.subr1})</Typography>
+                          <Typography>Gen: {heroInfo.generation} {heroInfo.rarity} {heroInfo.remainingSummons}/{heroInfo.maxSummons}</Typography>
+                          <Typography>{heroInfo.a1d}{advancedPlusActive.includes(heroInfo.a1r1) ? '⭐' : ''}</Typography>
+                          <Typography>{heroInfo.a2d}{advancedPlusActive.includes(heroInfo.a2r1) ? '⭐' : ''}</Typography>
+                          <Typography>{heroInfo.p1d}{advancedPlusPassive.includes(heroInfo.p1r1) ? '⭐' : ''}</Typography>
+                          <Typography>{heroInfo.p2d}{advancedPlusPassive.includes(heroInfo.p2r1) ? '⭐' : ''}</Typography>
                         <CardActions disableSpacing sx={{ paddingTop: 1, paddingBottom: 0 }}>
                           <RentCell
                             hero={heroInfo}
                             createAuction={createAuction}
                             cancelAuction={cancelAuction}
                           />
-                          <Typography sx={{ fontSize: '0.7rem' }}>Next: {heroInfo.nextSummonTime}</Typography>
+                          
                         </CardActions>
-                        
+                        <Typography sx={{ fontSize: '0.7rem' }}>Next: {heroInfo.nextSummonTime}</Typography>
                       </CardContent>
                     </Card>
                   </Grid>
