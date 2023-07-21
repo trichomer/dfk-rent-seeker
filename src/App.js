@@ -137,6 +137,7 @@ function App() {
   const [chainChanged, setChainChanged] = useState(false);
   const [advancedFilter, setAdvancedFilter] = useState(false);
   const [eliteFilter, setEliteFilter] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const injected = injectedModule();
 
@@ -273,7 +274,7 @@ function App() {
 
     fetchHeroes();
     setChainChanged(false);
-  }, [provider, chainChanged]);
+  }, [provider, chainChanged, refreshKey]);
 
   const cancelAuction = async (tokenId) => {
     if (!provider) return;
@@ -283,7 +284,13 @@ function App() {
       provider.getSigner()
     );
     try {
-      await rentalContract.cancelAuction(tokenId);
+      const tx = await rentalContract.cancelAuction(tokenId);
+      const receipt = await tx.wait();
+
+      if (receipt.status === 1) {
+        setRefreshKey(prevKey => prevKey + 1);
+      }
+
     } catch (error) {
       console.error(`Failed to cancel auction for hero ${tokenId}: ${error}`);
     }
@@ -304,13 +311,19 @@ function App() {
     try {
       const weiStartingPrice = ethers.utils.parseEther(startingPrice);
       const weiEndingPrice = ethers.utils.parseEther(endingPrice);
-      await rentalContract.createAuction(
+      const tx = await rentalContract.createAuction(
         tokenId,
         weiStartingPrice,
         weiEndingPrice,
         duration,
         ethers.constants.AddressZero
       );
+      const receipt = await tx.wait();
+
+      if (receipt.status === 1) {
+        setRefreshKey(prevKey => prevKey + 1);
+      }
+
     } catch (error) {
       console.error(`Failed to create auction for hero ${tokenId}: ${error}`);
     }
